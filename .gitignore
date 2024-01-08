@@ -1,1 +1,2 @@
-yolo/.venv
+.venv
+cmake-build-*

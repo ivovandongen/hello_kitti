@@ -3,3 +3,6 @@
     url = git@github.com:microsoft/onnxruntime.git
     branch = v1.16.3
 	shallow = true
+[submodule "deps/pixelmatch-cpp"]
+	path = deps/pixelmatch-cpp
+	url = git@github.com:mapbox/pixelmatch-cpp.git
