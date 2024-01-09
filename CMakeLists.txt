@@ -4,6 +4,10 @@ set(CMAKE_CXX_STANDARD 17)
 
 option(ENABLE_TESTS "Enable tests" ON)
 
+# Use a virtual env for our python dependencies
+include(${PROJECT_SOURCE_DIR}/cmake/python.cmake)
+setup_python()
+
 include(FetchContent)
 set(FETCHCONTENT_QUIET FALSE)
 include(deps/onnxruntime.cmake)
