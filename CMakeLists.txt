@@ -14,6 +14,7 @@ include(deps/onnxruntime.cmake)
 include(deps/kitty_parser.cmake)
 include(deps/cxxopts.cmake)
 
+add_subdirectory(data)
 add_subdirectory(models)
 add_subdirectory(modules)
 
