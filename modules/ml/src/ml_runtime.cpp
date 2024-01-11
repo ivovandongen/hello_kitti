@@ -26,8 +26,13 @@ namespace ivd::ml {
 
     Ort::Session MLRuntime::createSession(const std::filesystem::path &model) const {
         Ort::SessionOptions session_options;
+#ifndef NDEBUG
+        session_options.SetLogSeverityLevel(ORT_LOGGING_LEVEL_VERBOSE);
+#endif
+        session_options.SetExecutionMode(ORT_PARALLEL);
+        session_options.SetGraphOptimizationLevel(ORT_ENABLE_ALL);
 #ifdef __APPLE__
-        uint32_t coreml_flags = 0;
+        uint32_t coreml_flags = COREML_FLAG_ENABLE_ON_SUBGRAPH;
         Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CoreML(session_options, coreml_flags));
 #endif
         return {env_, model.c_str(), session_options};

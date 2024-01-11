@@ -24,6 +24,7 @@ function(add_test_module)
     # Create the test executable
     add_executable(${MODULE_NAME}
             ${COMMON_TEST_DIR}/test.hpp
+            ${COMMON_TEST_DIR}/test.cpp
             ${COMMON_TEST_DIR}/main.cpp
 
             ${SRC_FILES}

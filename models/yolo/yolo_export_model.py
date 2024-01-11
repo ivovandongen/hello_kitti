@@ -3,5 +3,5 @@ from ultralytics import YOLO
 
 for file in ['yolov8n.pt', 'yolov8n-seg.pt']:
     model = YOLO(file)
-    model.export(format='coreml')
+    model.export(format='coreml', nms=True)
     model.export(format='onnx')

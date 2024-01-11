@@ -18,11 +18,20 @@ namespace ivd::ml {
 
         virtual ~MLModel() = default;
 
-        const std::vector<Node>& inputNodes() const {
+        const std::vector<Node> &inputNodes() const {
             return inputs_;
         }
-        const std::vector<Node>& outputNodes() const {
+
+        const std::vector<Node> &outputNodes() const {
             return outputs_;
+        }
+
+        const std::vector<const char *> &inputNames() const {
+            return inputNames_;
+        }
+
+        const std::vector<const char *> &outputNames() const {
+            return outputNames_;
         }
 
     protected:
@@ -31,6 +40,8 @@ namespace ivd::ml {
         Ort::Session session_{nullptr};
         std::vector<Node> inputs_;
         std::vector<Node> outputs_;
+        std::vector<const char *> inputNames_;
+        std::vector<const char *> outputNames_;
     };
 
 }
