@@ -6,3 +6,9 @@
 [submodule "deps/pixelmatch-cpp"]
 	path = deps/pixelmatch-cpp
 	url = git@github.com:mapbox/pixelmatch-cpp.git
+[submodule "deps/kitty_parser"]
+	path = deps/kitty_parser
+	url = git@github.com:ivovandongen/kitti_parser.git
+[submodule "deps/cxxopts"]
+	path = deps/cxxopts
+	url = git@github.com:jarro2783/cxxopts.git

@@ -11,6 +11,8 @@ setup_python()
 include(FetchContent)
 set(FETCHCONTENT_QUIET FALSE)
 include(deps/onnxruntime.cmake)
+include(deps/kitty_parser.cmake)
+include(deps/cxxopts.cmake)
 
 add_subdirectory(models)
 add_subdirectory(modules)
