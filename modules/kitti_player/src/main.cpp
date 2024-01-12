@@ -32,6 +32,8 @@ void annotateImage(cv::Mat &image, std::vector<ivd::ml::Detection> &detections) 
 struct Options {
     std::filesystem::path model;
     std::filesystem::path data;
+    uint32_t wait;
+    double speed;
 };
 
 Options parseOpts(int argc, char **argv) {
@@ -41,6 +43,9 @@ Options parseOpts(int argc, char **argv) {
     options.add_options()
             ("m, model", "Model file", cxxopts::value<std::string>())
             ("d,data", "Data directoru", cxxopts::value<std::string>())
+            ("w,wait", "Wait time (ms) between frames - 0 == wait indefinitely",
+             cxxopts::value<uint32_t>()->default_value("1"))
+            ("s,speed", "Speed multiplier", cxxopts::value<double>()->default_value("1.0"))
             ("h,help", "Print usage");
     // clang-format on
 
@@ -54,6 +59,8 @@ Options parseOpts(int argc, char **argv) {
         Options opts{
                 result["model"].as<std::string>(),
                 result["data"].as<std::string>(),
+                result["wait"].as<uint32_t>(),
+                result["speed"].as<double>(),
         };
 
         return opts;
@@ -80,10 +87,13 @@ int main(int argc, char **argv) {
     kitti_parser::Parser parser(options.data);
     ivd::ml::DetectMLModel model(options.model);
 
-    parser.register_callback_stereo_color([&](kitti_parser::Config *, long ts, kitti_parser::stereo_t *frame) {
-        std::cout << "time: " << ts << std::endl;
+    parser.register_callback_stereo_color([&](kitti_parser::Config *config, long ts, kitti_parser::stereo_t *frame) {
+        std::cout << "Ts: " << ts << " (Image ts: " << frame->timestamp << ")" << std::endl;
         auto detections = model.predict(frame->image_left);
-        std::cout << "\tDetections: " << detections.size() << std::endl;
+        std::cout << "\tDetections ( " << detections.size() << "):" << std::endl;
+        for (auto &detection: detections) {
+            std::cout << "\t\t" << detection.className << ": " << detection.confidence << std::endl;
+        }
         annotateImage(frame->image_left, detections);
         cv::imshow(leftWindowColor, frame->image_left);
         cv::resizeWindow(leftWindowColor, frame->image_left.size().width * windowScale,
@@ -92,8 +102,8 @@ int main(int argc, char **argv) {
         cv::resizeWindow(rightWindowColor, frame->image_right.size().width * windowScale,
                          frame->image_right.size().height * windowScale);
         cv::moveWindow(rightWindowColor, frame->image_right.size().width * windowScale, 0);
-        cv::waitKey(1);
+        cv::waitKey(options.wait);
     });
 
-    parser.run(1);
+    parser.run(options.speed);
 }
