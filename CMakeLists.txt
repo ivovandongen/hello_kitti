@@ -3,6 +3,7 @@ project(hello-kitti)
 set(CMAKE_CXX_STANDARD 17)
 
 option(ENABLE_TESTS "Enable tests" ON)
+option(ML_BACKEND_VERBOSE_LOGS "Verbose ML Backend logging" OFF)
 
 # Use a virtual env for our python dependencies
 include(${PROJECT_SOURCE_DIR}/cmake/python.cmake)

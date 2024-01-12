@@ -26,7 +26,7 @@ namespace ivd::ml {
 
     Ort::Session MLRuntime::createSession(const std::filesystem::path &model) const {
         Ort::SessionOptions session_options;
-#ifndef NDEBUG
+#ifdef ML_BACKEND_VERBOSE_LOGS
         session_options.SetLogSeverityLevel(ORT_LOGGING_LEVEL_VERBOSE);
 #endif
         session_options.SetExecutionMode(ORT_PARALLEL);
