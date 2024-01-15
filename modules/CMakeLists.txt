@@ -50,5 +50,6 @@ macro(ADD_MODULE MODULE_NAME)
 endmacro(ADD_MODULE)
 
 # Modules
+add_subdirectory(common)
 add_subdirectory(ml)
 add_subdirectory(kitti_player)
