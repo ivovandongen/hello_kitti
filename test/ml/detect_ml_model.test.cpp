@@ -52,7 +52,14 @@ std::vector<TestParam>
 testParameters(const std::filesystem::path &model, const std::filesystem::path &testBaseDir) {
     std::vector<TestParam> testParams;
 
-    for (auto &subDir: std::filesystem::directory_iterator(testBaseDir)) {
+    // Copy and sort
+    auto dirIterator = std::filesystem::directory_iterator(testBaseDir);
+    std::vector<std::filesystem::directory_entry> subDirs;
+    std::copy(begin(dirIterator), end(dirIterator), std::back_inserter(subDirs));
+    std::sort(subDirs.begin(), subDirs.end());
+
+    // Filter
+    for (auto &subDir: subDirs) {
         if (!subDir.is_directory() || !ivd::common::startsWith(subDir.path().filename().string(), "image")) {
             continue;
         }
