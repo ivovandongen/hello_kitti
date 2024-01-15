@@ -1,48 +1,6 @@
 #include <ml/detect_ml_model.hpp>
 #include <ml/yolo/yolo_classes.hpp>
 
-namespace {
-    cv::Mat getMask(const cv::Mat &mask_info, const cv::Mat &mask_data, const cv::Mat &inputImage, cv::Rect bound) {
-        int seg_ch = 32;
-        int seg_w = 160, seg_h = 160;
-        int net_w = 640, net_h = 640;
-        float mask_thresh = 0.5;
-
-        cv::Mat mast_out;
-
-        cv::Vec4f trans = {640.0f / inputImage.cols, 640.0f / inputImage.rows, 0, 0};
-        int r_x = floor((bound.x * trans[0] + trans[2]) / net_w * seg_w);
-        int r_y = floor((bound.y * trans[1] + trans[3]) / net_h * seg_h);
-        int r_w = ceil(((bound.x + bound.width) * trans[0] + trans[2]) / net_w * seg_w) - r_x;
-        int r_h = ceil(((bound.y + bound.height) * trans[1] + trans[3]) / net_h * seg_h) - r_y;
-        r_w = MAX(r_w, 1);
-        r_h = MAX(r_h, 1);
-        if (r_x + r_w > seg_w) //crop
-        {
-            seg_w - r_x > 0 ? r_w = seg_w - r_x : r_x -= 1;
-        }
-        if (r_y + r_h > seg_h) {
-            seg_h - r_y > 0 ? r_h = seg_h - r_y : r_y -= 1;
-        }
-        std::vector<cv::Range> roi_rangs = {cv::Range(0, 1), cv::Range::all(), cv::Range(r_y, r_h + r_y),
-                                            cv::Range(r_x, r_w + r_x)};
-        cv::Mat temp_mask = mask_data(roi_rangs).clone();
-        cv::Mat protos = temp_mask.reshape(0, {seg_ch, r_w * r_h});
-        cv::Mat matmul_res = (mask_info * protos).t();
-        cv::Mat masks_feature = matmul_res.reshape(1, {r_h, r_w});
-        cv::Mat dest;
-        exp(-masks_feature, dest);//sigmoid
-        dest = 1.0 / (1.0 + dest);
-        int left = floor((net_w / seg_w * r_x - trans[2]) / trans[0]);
-        int top = floor((net_h / seg_h * r_y - trans[3]) / trans[1]);
-        int width = ceil(net_w / seg_w * r_w / trans[0]);
-        int height = ceil(net_h / seg_h * r_h / trans[1]);
-        cv::Mat mask;
-        cv::resize(dest, mask, cv::Size(width, height));
-        return mask(bound - cv::Point(left, top)) > mask_thresh;
-    }
-}
-
 namespace ivd::ml {
 
     DetectMLModel::DetectMLModel(std::filesystem::path model) : MLModel(std::move(model)) {
@@ -57,23 +15,14 @@ namespace ivd::ml {
         inputSize_ = {(*inputNode).dimensions[2], (*inputNode).dimensions[3]}; // 640x640
     }
 
-    std::vector<Detection> DetectMLModel::predict(cv::Mat &image, PredictionOptions options) {
-        // TODO:
-        // - Square input image (pad) or letterbox
-        // - Color space conversion?
-        auto imageSize = image.size();
+    std::vector<Detection> DetectMLModel::predict(const cv::Mat& image, PredictionOptions options) {
         auto inputShape = inputNodes()[0].dimensions;
 
-        // Calculate scale factors
-        auto scale_x = imageSize.width / (double) inputSize_.width;
-        auto scale_y = imageSize.height / (double) inputSize_.height;
-
-        cv::Mat blob = cv::dnn::blobFromImage(image, 1 / 255.0, cv::Size(inputSize_.width, inputSize_.height),
-                                              cv::Scalar(0, 0, 0), true, false);
+        auto preprocessedImage = preprocess(image);
 
         auto inputTensor = Ort::Value::CreateTensor<float>(
                 Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault),
-                (float *) blob.data, blob.total(), inputShape.data(),
+                (float *) preprocessedImage.blob.data, preprocessedImage.blob.total(), inputShape.data(),
                 inputShape.size());
 
         auto outputs = session_.Run(Ort::RunOptions{nullptr},
@@ -119,13 +68,13 @@ namespace ivd::ml {
                 float w = data[2];
                 float h = data[3];
 
-                int left = int((x - 0.5 * w) * scale_x);
-                int top = int((y - 0.5 * h) * scale_y);
+                int left = int(preprocessedImage.scale.width * (x - 0.5 * w - preprocessedImage.padding.left));
+                int top = int(preprocessedImage.scale.width * (y - 0.5 * h - preprocessedImage.padding.top));
+                int width = int(w * preprocessedImage.scale.x);
+                int height = int(h * preprocessedImage.scale.y);
 
-                int width = int(w * scale_x);
-                int height = int(h * scale_y);
-
-                //  TODO Bounding boxes boundary clamp
+                // TODO: top left, bottom right instead
+                // TODO: Bounding boxes boundary clamp
 
                 boxes.emplace_back(left, top, width, height);
             }
@@ -148,18 +97,78 @@ namespace ivd::ml {
 
         if (segmentation) {
             auto output1DataShape = outputs[1].GetTensorTypeAndShapeInfo().GetShape();
-            std::vector<int> maskDimensions{1, (int) output1DataShape[1], (int) output1DataShape[2],
-                                     (int) output1DataShape[3]};
-            cv::Mat output1 = cv::Mat(maskDimensions, CV_32F, outputs[1].GetTensorMutableData<float>());
-
+            // Single image, skip first dimension (1)
+            std::vector<int> maskDimensions{(int) output1DataShape[1], (int) output1DataShape[2],
+                                            (int) output1DataShape[3]};
+            auto protos = cv::Mat(maskDimensions, CV_32F, outputs[1].GetTensorMutableData<float>());
             for (size_t i = 0; i < nmsResult.size(); i++) {
                 auto idx = nmsResult[i];
-                auto &result = detections[i];
-                result.mask = getMask(cv::Mat(masks[idx]).t(), output1, image, result.bbox);
+                detections[i].mask = processMask(protos, boxes[idx], masks[idx], preprocessedImage);
             }
         }
 
         return detections;
+    }
+
+    DetectMLModel::PreprocessedImage DetectMLModel::preprocess(const cv::Mat& inputImage) const {
+
+        // Ensure size matches, letterbox if needed
+        auto imageSize = inputImage.size();
+        cv::Size newSize(inputSize_.width, inputSize_.height);
+        auto r = std::min(newSize.width / double(imageSize.width), newSize.height / double(imageSize.width));
+
+        cv::Mat image;
+        cv::Size sizeUnpadded{int(round(imageSize.width * r)), int(round(imageSize.height * r))};
+        cv::Size_<double> padding = {(newSize.width - sizeUnpadded.width) / 2.0, (newSize.height - sizeUnpadded.height) / 2.0};
+        if (imageSize != sizeUnpadded) {
+            cv::resize(inputImage, image, sizeUnpadded);
+        }
+
+        int top = int(round(padding.height - 0.1));
+        int bottom = int(round(padding.height + 0.1));
+        int left = int(round(padding.width - 0.1));
+        int right = int(round(padding.width + 0.1));
+
+        cv::copyMakeBorder(image, image, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
+
+        return {
+                cv::dnn::blobFromImage(image, 1 / 255.0, cv::Size(inputSize_.width, inputSize_.height),
+                                       cv::Scalar(0, 0, 0), true, false),
+                image, // TODO: Remove after debugging
+                {1 / r, 1 / r},
+                {top, bottom, left, right},
+                inputImage.size()
+        };
+    }
+
+    cv::Mat DetectMLModel::processMask(cv::Mat protos, const cv::Rect &box, const std::vector<float> &maskIn,
+                                       const DetectMLModel::PreprocessedImage &preprocessedImage) const {
+        auto c = protos.size[0];
+        auto mh = protos.size[1];
+        auto mw = protos.size[2];
+        // Matrix multiplication of mask 1x32 * protos reshaped to 32x25600(160x160)
+        // TODO: take in all masks and do 1 multiplication instead?
+        cv::Mat mask = cv::Mat(1, c, CV_32F, (void *) maskIn.data()) *
+                       cv::Mat(std::vector<int>{c, mw * mh}, protos.type(), protos.ptr<float>(0));
+        // Reshape to 160x160
+        mask = cv::Mat(mw, mh, mask.type(), mask.ptr<float>(0));
+
+        // tl br of mask
+        auto scaleW = mh / double(inputSize_.width);
+        auto scaleH = mh / double(inputSize_.height);
+        cv::Rect roi(
+                round(preprocessedImage.padding.left * scaleW - 0.1),
+                round(preprocessedImage.padding.top * scaleH - 0.1),
+                round(mw - (preprocessedImage.padding.left + preprocessedImage.padding.right) * scaleW + 0.1),
+                round(mh - (preprocessedImage.padding.top + preprocessedImage.padding.bottom) * scaleH + 0.1)
+        );
+        mask = mask(roi);
+
+        // Scale mask
+        cv::resize(mask, mask, preprocessedImage.originalSize);
+
+        // Filter by box and threshold
+        return mask(box) > 0.5; // TODO: Param?
     }
 
 }

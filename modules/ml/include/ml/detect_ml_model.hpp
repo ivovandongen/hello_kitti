@@ -41,11 +41,28 @@ namespace ivd::ml {
 
         ~DetectMLModel() override = default;
 
-        std::vector<Detection> predict(cv::Mat &image, PredictionOptions options = {0.45, 0.5});
+        std::vector<Detection> predict(const cv::Mat& image, PredictionOptions options = {0.25, 0.45});
 
         Size<int64_t> inputSize() const {
             return inputSize_;
         };
+    private:
+        struct PreprocessedImage {
+            cv::Mat blob;
+            cv::Mat image;
+            Size<double> scale;
+            struct Padding {
+                int top;
+                int bottom;
+                int left;
+                int right;
+            } padding;
+            cv::Size originalSize;
+        };
+        PreprocessedImage preprocess(const cv::Mat& image) const;
+
+        cv::Mat processMask(cv::Mat protos, const cv::Rect &box, const std::vector<float> &mask,
+                            const PreprocessedImage &) const;
     private:
         Size<int64_t> inputSize_{};
     };
