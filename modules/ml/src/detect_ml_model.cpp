@@ -68,13 +68,13 @@ namespace ivd::ml {
                 float w = data[2];
                 float h = data[3];
 
-                int left = int(preprocessedImage.scale.width * (x - 0.5 * w - preprocessedImage.padding.left));
-                int top = int(preprocessedImage.scale.width * (y - 0.5 * h - preprocessedImage.padding.top));
-                int width = int(w * preprocessedImage.scale.x);
-                int height = int(h * preprocessedImage.scale.y);
+                // Scale boxes and crop to input image size
+                int left = std::max(0, int(preprocessedImage.scale.width * (x - 0.5 * w - preprocessedImage.padding.left)));
+                int top = std::max(0, int(preprocessedImage.scale.width * (y - 0.5 * h - preprocessedImage.padding.top)));
+                int width = std::min(image.size().width - left, int(w * preprocessedImage.scale.x));
+                int height = std::min(image.size().height - top, int(h * preprocessedImage.scale.y));
 
                 // TODO: top left, bottom right instead
-                // TODO: Bounding boxes boundary clamp
 
                 boxes.emplace_back(left, top, width, height);
             }
