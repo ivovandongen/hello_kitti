@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <filesystem>
+#include <regex>
 
 void annotateImage(cv::Mat &image, std::vector<ivd::ml::Detection> &detections, bool mask) {
 
@@ -48,18 +49,20 @@ void annotateImage(cv::Mat &image, std::vector<ivd::ml::Detection> &detections, 
 struct Options {
     std::filesystem::path model;
     std::filesystem::path data;
+    std::string index;
     uint32_t wait;
     double speed;
     bool mask;
 };
 
 Options parseOpts(int argc, char **argv) {
-    cxxopts::Options options(argv[0], "ao-cli");
+    cxxopts::Options options(argv[0], argv[0]);
 
     // clang-format off
     options.add_options()
             ("m, model", "Model file", cxxopts::value<std::string>())
-            ("d,data", "Data directoru", cxxopts::value<std::string>())
+            ("d,data", "Data directory", cxxopts::value<std::string>())
+            ("index", "Dataset index to play from data directory", cxxopts::value<std::string>()->default_value(""))
             ("w,wait", "Wait time (ms) between frames - 0 == wait indefinitely",
              cxxopts::value<uint32_t>()->default_value("1"))
             ("s,speed", "Speed multiplier", cxxopts::value<double>()->default_value("1.0"))
@@ -77,6 +80,7 @@ Options parseOpts(int argc, char **argv) {
         Options opts{
                 result["model"].as<std::string>(),
                 result["data"].as<std::string>(),
+                result["index"].as<std::string>(),
                 result["wait"].as<uint32_t>(),
                 result["speed"].as<double>(),
                 result["mask"].as<bool>(),
@@ -103,14 +107,18 @@ int main(int argc, char **argv) {
     std::cout << "Hello KITTI" << std::endl;
     auto options = parseOpts(argc, argv);
 
-    kitti_parser::Parser parser(options.data);
+    kitti_parser::Parser parser(options.data, [&](auto& indexPath) {
+        return options.index.empty() ||
+               std::regex_match(indexPath.filename().string(), std::regex(options.data.filename().string() +
+                                                                          "_drive_(" + options.index + ")_sync"));
+    });
     ivd::ml::DetectMLModel model(options.model);
 
     parser.register_callback_stereo_color([&](kitti_parser::Config *config, long ts, kitti_parser::stereo_t *frame) {
         std::cout << "Ts: " << ts << "\n\tImage left: " << frame->image_left_path << "\n\tImage Right: "
                   << frame->image_right_path << std::endl;
         auto detections = model.predict(frame->image_left);
-        std::cout << "\tDetections ( " << detections.size() << "):" << std::endl;
+        std::cout << "\tDetections (" << detections.size() << "):" << std::endl;
         for (auto &detection: detections) {
             std::cout << "\t\t" << detection.className << ": " << detection.confidence << std::endl;
         }
