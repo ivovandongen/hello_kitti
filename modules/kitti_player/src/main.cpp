@@ -6,12 +6,28 @@
 #include <iostream>
 #include <filesystem>
 
-void annotateImage(cv::Mat &image, std::vector<ivd::ml::Detection> &detections) {
+void annotateImage(cv::Mat &image, std::vector<ivd::ml::Detection> &detections, bool mask) {
+
+    // Draw mask
+    if (mask) {
+        // TODO: Fancy outline
+        cv::Scalar maskColor = cv::Scalar(0, 0, 255);
+
+        auto masked = image.clone();
+        for (auto &detection: detections) {
+            if (!detection.mask.empty()) {
+                masked(detection.bbox).setTo(maskColor, detection.mask);
+            }
+        }
+
+        cv::addWeighted(image, 0.6, masked, 0.4, 0, image);
+    }
+
     for (auto &detection: detections) {
         cv::Rect box = detection.bbox;
-        cv::Scalar color = cv::Scalar(0, 0, 255);
 
         // Detection box
+        cv::Scalar color = cv::Scalar(0, 0, 255);
         cv::rectangle(image, box, color, 2);
 
         // Detection box text
@@ -34,6 +50,7 @@ struct Options {
     std::filesystem::path data;
     uint32_t wait;
     double speed;
+    bool mask;
 };
 
 Options parseOpts(int argc, char **argv) {
@@ -46,6 +63,7 @@ Options parseOpts(int argc, char **argv) {
             ("w,wait", "Wait time (ms) between frames - 0 == wait indefinitely",
              cxxopts::value<uint32_t>()->default_value("1"))
             ("s,speed", "Speed multiplier", cxxopts::value<double>()->default_value("1.0"))
+            ("mask", "Segmentation mask", cxxopts::value<bool>()->default_value("false"))
             ("h,help", "Print usage");
     // clang-format on
 
@@ -61,6 +79,7 @@ Options parseOpts(int argc, char **argv) {
                 result["data"].as<std::string>(),
                 result["wait"].as<uint32_t>(),
                 result["speed"].as<double>(),
+                result["mask"].as<bool>(),
         };
 
         return opts;
@@ -88,13 +107,14 @@ int main(int argc, char **argv) {
     ivd::ml::DetectMLModel model(options.model);
 
     parser.register_callback_stereo_color([&](kitti_parser::Config *config, long ts, kitti_parser::stereo_t *frame) {
-        std::cout << "Ts: " << ts << " (Image ts: " << frame->timestamp << ")" << std::endl;
+        std::cout << "Ts: " << ts << "\n\tImage left: " << frame->image_left_path << "\n\tImage Right: "
+                  << frame->image_right_path << std::endl;
         auto detections = model.predict(frame->image_left);
         std::cout << "\tDetections ( " << detections.size() << "):" << std::endl;
         for (auto &detection: detections) {
             std::cout << "\t\t" << detection.className << ": " << detection.confidence << std::endl;
         }
-        annotateImage(frame->image_left, detections);
+        annotateImage(frame->image_left, detections, options.mask);
         cv::imshow(leftWindowColor, frame->image_left);
         cv::resizeWindow(leftWindowColor, frame->image_left.size().width * windowScale,
                          frame->image_left.size().height * windowScale);
