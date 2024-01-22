@@ -1,4 +1,4 @@
-include_guard()
+include_guard(GLOBAL)
 
 add_library(pixelmatch-cpp INTERFACE)
 target_include_directories(pixelmatch-cpp SYSTEM INTERFACE ${CMAKE_SOURCE_DIR}/deps/pixelmatch-cpp/include)

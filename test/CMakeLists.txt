@@ -29,8 +29,9 @@ function(add_test_module)
 
             ${SRC_FILES}
     )
+    include(${PROJECT_SOURCE_DIR}/deps/pixelmatch-cpp.cmake)
     target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${COMMON_TEST_DIR})
-    target_link_libraries(${MODULE_NAME} PUBLIC gtest gmock ${MODULE_ON_TEST})
+    target_link_libraries(${MODULE_NAME} PUBLIC gtest gmock pixelmatch-cpp ${MODULE_ON_TEST})
     target_compile_definitions(${MODULE_NAME} PRIVATE FIXTURES_DIR=\"${FIXTURES_DIR}\")
     target_compile_definitions(${MODULE_NAME} PRIVATE MODELS_DIR=\"${CMAKE_SOURCE_DIR}/models\")
 
