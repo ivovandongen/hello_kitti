@@ -1,0 +1,2 @@
+add_test_module()
+target_link_libraries(stereo_tests PUBLIC kitti kitti_parser)

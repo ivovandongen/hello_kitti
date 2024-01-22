@@ -1,0 +1,3 @@
+add_module(kitti_stereo_depth)
+find_package(OpenCV REQUIRED COMPONENTS highgui)
+target_link_libraries(kitti_stereo_depth PUBLIC ml stereo kitti kitti_parser opencv_highgui cxxopts)

@@ -51,5 +51,8 @@ endmacro(ADD_MODULE)
 
 # Modules
 add_subdirectory(common)
+add_subdirectory(kitti)
 add_subdirectory(ml)
-add_subdirectory(kitti_player)
+add_subdirectory(stereo)
+add_subdirectory(kitti_detections)
+add_subdirectory(kitti_stereo_depth)

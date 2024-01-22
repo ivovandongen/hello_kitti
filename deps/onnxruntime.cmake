@@ -1,4 +1,4 @@
-include_guard()
+include_guard(GLOBAL)
 
 set(onnxruntime_GENERATE_TEST_REPORTS OFF CACHE BOOL "" FORCE)
 set(onnxruntime_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
