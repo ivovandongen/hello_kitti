@@ -14,6 +14,8 @@ set(FETCHCONTENT_QUIET FALSE)
 include(deps/onnxruntime.cmake)
 include(deps/kitty_parser.cmake)
 include(deps/cxxopts.cmake)
+include(deps/libnpy.cmake)
+include(deps/colormap.cmake)
 
 add_subdirectory(data)
 add_subdirectory(models)

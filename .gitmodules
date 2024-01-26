@@ -12,3 +12,9 @@
 [submodule "deps/cxxopts"]
 	path = deps/cxxopts
 	url = git@github.com:jarro2783/cxxopts.git
+[submodule "deps/libnpy"]
+	path = deps/libnpy
+	url = git@github.com:llohse/libnpy.git
+[submodule "deps/colormap"]
+	path = deps/colormap
+	url = git@github.com:jgreitemann/colormap.git
