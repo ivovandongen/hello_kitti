@@ -10,4 +10,19 @@ namespace ivd::kitti {
         }
         return matrix;
     }
+
+    std::vector<std::array<float, 4>> readVeloBin(const std::filesystem::path &file) {
+        // allocate 4 MB buffer (only ~130*4*4 KB are needed)
+        std::vector<std::array<float, 4>> buffer;
+        buffer.resize(1000000);
+
+        // load point cloud
+        FILE *stream = std::fopen(file.c_str(), "rb");
+        auto numPoints = std::fread(buffer.data(), sizeof(float), buffer.size(), stream) / 4;
+        std::fclose(stream);
+
+        // Cut buffer size back
+        buffer.resize(numPoints);
+        return buffer;
+    }
 }
