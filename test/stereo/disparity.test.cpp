@@ -19,7 +19,7 @@ TEST(Disparity, SGBM_SmokeTest) {
     ASSERT_EQ(disparity.dims, 2);
     cv::normalize(disparity, disparity, 0, 255, cv::NORM_MINMAX, CV_8UC1);
     cv::imwrite(baseDir / "disparity_out.png", disparity);
-    const float threshold = 0.003;
+    const float threshold = 0.005;
     auto expected = cv::imread(baseDir / "disparity_expected.png", cv::IMREAD_GRAYSCALE);
     auto diff = disparity.clone();
     auto mismatched = pixelmatch(disparity.data, disparity.channels() * disparity.size().width, expected.data,

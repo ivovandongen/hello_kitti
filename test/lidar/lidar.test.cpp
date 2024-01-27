@@ -143,3 +143,26 @@ TEST(Lidar, E2E_Image) {
     cv::imwrite(basePath / "E2E_Image-image_diff.png", diff);
     EXPECT_LT(mismatched, image.total() * threshold);
 }
+
+TEST(Lidar, GetDepth) {
+    auto basePath = getFixturesPath() / "lidar" / "00_basic";
+
+    // Get reference image
+    auto image = cv::imread(basePath / "left.png");
+
+    // Get raw points
+    auto npydata = npy::read_npy<double>(basePath / "lidar_points_cam.npy");
+    std::vector<double> data = npydata.data;
+    std::vector<unsigned long> shape = npydata.shape;
+    ASSERT_EQ(shape[1], 3); // 3 rows (u,v,z)
+    cv::Mat points(cv::Size(shape[0], shape[1]), CV_64F, data.data());
+
+    // Create depth map from points in image dimensions
+    auto depthMap = lidar::depthMapFromProjectedPoints(points, image.size());
+
+    // Get depth
+    cv::Rect bbox{255,165, 256,183};
+    auto depth = lidar::getDepth(depthMap, bbox);
+    ASSERT_TRUE(depth.has_value());
+    ASSERT_NEAR(*depth, 8.24, 0.01);
+}

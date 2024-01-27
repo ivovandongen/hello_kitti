@@ -9,12 +9,55 @@
 #include <cxxopts.hpp>
 #include <opencv2/opencv.hpp>
 
+#include <algorithm>
 #include <iostream>
 #include <filesystem>
 #include <regex>
 
 using namespace ivd;
 
+void
+annotateImage(cv::Mat &image, std::vector<ivd::ml::Detection> &detections, std::vector<double> distances, bool mask) {
+
+    // Draw mask
+    if (mask) {
+        // TODO: Fancy outline
+        cv::Scalar maskColor = cv::Scalar(0, 0, 255);
+
+        auto masked = image.clone();
+        for (auto &detection: detections) {
+            if (!detection.mask.empty()) {
+                masked(detection.bbox).setTo(maskColor, detection.mask);
+            }
+        }
+
+        cv::addWeighted(image, 0.6, masked, 0.4, 0, image);
+    }
+
+    for (size_t i = 0; i < detections.size(); i++) {
+        auto &detection = detections[i];
+        auto distance = distances[i];
+        cv::Rect box = detection.bbox;
+
+        // Detection box
+        cv::Scalar color = cv::Scalar(0, 0, 255);
+        cv::rectangle(image, box, color, 2);
+
+        // Detection box text
+        const float fontScale = 0.5;
+        const int thickness = 1;
+        const int verticalPadding = 10;
+        std::string classString = detection.className + ' ' + std::to_string(detection.confidence).substr(0, 4);
+        cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, fontScale, thickness, nullptr);
+        cv::Rect textBox(box.x, box.y - textSize.height * 2, textSize.width + verticalPadding, textSize.height * 2);
+
+        cv::rectangle(image, textBox, color, cv::FILLED);
+        cv::putText(image, std::to_string(distance) + "m",
+                    cv::Point(box.x + verticalPadding / 2, box.y - textSize.height / 2),
+                    cv::FONT_HERSHEY_DUPLEX, fontScale,
+                    cv::Scalar(0, 0, 0), thickness, cv::LINE_AA);
+    }
+}
 
 struct Options {
     std::filesystem::path model;
@@ -68,6 +111,7 @@ class Pipeline {
     const static constexpr char *leftWindowColor = "left image (Color)";
     const static constexpr char *rightWindowColor = "right image (Color)";
     const static constexpr char *lidarWindowColor = "Lidar";
+    const static constexpr char *lidarDepthWindow = "Lidar depth raw";
     const static constexpr float windowScale = 1.0; //0.7;
 public:
     explicit Pipeline(const Options &options, cv::Mat velo_cam2) : options_(options), model_(options.model),
@@ -75,6 +119,7 @@ public:
         cv::namedWindow(leftWindowColor, cv::WINDOW_NORMAL);
         cv::namedWindow(rightWindowColor, cv::WINDOW_NORMAL);
         cv::namedWindow(lidarWindowColor, cv::WINDOW_NORMAL);
+        cv::namedWindow(lidarDepthWindow, cv::WINDOW_NORMAL);
     }
 
     ~Pipeline() {
@@ -104,7 +149,6 @@ public:
         data = data.colRange(0, 3);
 
         lidarDataFrameXYZW_ = lidar::makeHomogeneous(data);
-        veloUVZ_ = lidar::project(lidarDataFrameXYZW_, velo_cam2_);
 
         update();
     }
@@ -112,14 +156,29 @@ public:
 private:
     void update() {
         // See if frame is complete
-        if (leftColor_.empty() || rightColor_.empty() || lidarDataFrameXYZW_.empty() || veloUVZ_.empty()) {
+        if (leftColor_.empty() || rightColor_.empty() || lidarDataFrameXYZW_.empty()) {
             return;
         }
 
+        veloUVZ_ = lidar::project(lidarDataFrameXYZW_, velo_cam2_, leftColor_.size());
+        depthMap_ = lidar::depthMapFromProjectedPoints(veloUVZ_, leftColor_.size());
+
+        auto distances = [](std::vector<ivd::ml::Detection> &detections, cv::Mat &depthMap) {
+            std::vector<double> distances;
+            distances.reserve(detections.size());
+            std::transform(detections.begin(), detections.end(), std::back_inserter(distances),
+                           [&depthMap](const ivd::ml::Detection &detection) {
+                               return ivd::lidar::getDepth(depthMap, detection.bbox).value_or(-1);
+                           });
+            return distances;
+        }(detections_, depthMap_);
+
         // Left color image
+        annotateImage(leftColor_, detections_, distances, false);
         cv::imshow(leftWindowColor, leftColor_);
         cv::resizeWindow(leftWindowColor, leftColor_.size().width * windowScale,
                          leftColor_.size().height * windowScale);
+
 
         // Right color image
         cv::imshow(rightWindowColor, rightColor_);
@@ -134,6 +193,11 @@ private:
         cv::imshow(lidarWindowColor, lidarMap);
         cv::moveWindow(lidarWindowColor, 0, cv::getWindowImageRect(leftWindowColor).height * windowScale);
 
+        // Draw lidar depth Map raw
+        cv::imshow(lidarDepthWindow, depthMap_);
+        cv::moveWindow(lidarDepthWindow, cv::getWindowImageRect(lidarWindowColor).width,
+                       cv::getWindowImageRect(leftWindowColor).height * windowScale);
+
         // Wait or not
         cv::waitKey(options_.wait);
 
@@ -143,6 +207,7 @@ private:
         detections_.clear();
         lidarDataFrameXYZW_ = cv::Mat();
         veloUVZ_ = cv::Mat();
+        depthMap_ = cv::Mat();
     }
 
 private:
@@ -157,6 +222,7 @@ private:
     std::vector<ml::Detection> detections_;
     cv::Mat lidarDataFrameXYZW_;
     cv::Mat veloUVZ_;
+    cv::Mat depthMap_;
 };
 
 int main(int argc, char **argv) {

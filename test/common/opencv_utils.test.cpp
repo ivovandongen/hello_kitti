@@ -17,6 +17,13 @@ TEST(OpenCV_Utils, Median_float) {
     ASSERT_FLOAT_EQ(ivd::common::median<float>(in), 5.3);
 }
 
+TEST(OpenCV_Utils, Median_filtered) {
+    cv::Mat in{(cv::Mat_<float>(1, 5) << 30, 10, -1, 0, 20)};
+    ASSERT_FLOAT_EQ(*ivd::common::median<float>(in, [](auto &val) {
+        return val > 0;
+    }), 20);
+}
+
 TEST(OpenCV_Utils, MakeMat) {
     auto mat = common::createMat<double>(cv::Size{3, 3}, {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0});
     ASSERT_EQ(cv::Size(3, 3), mat.size());
