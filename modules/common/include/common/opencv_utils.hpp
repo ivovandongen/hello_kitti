@@ -11,9 +11,24 @@ namespace ivd::common {
     double median(const cv::Mat &in) {
         assert(in.elemSize() == sizeof(T));
         std::vector<T> tmp;
+        tmp.reserve(in.total());
         for (int i = 0; i < in.rows; ++i) {
             tmp.insert(tmp.end(), in.ptr<T>(i), in.ptr<T>(i) + in.cols * in.channels());
         }
+        std::nth_element(tmp.begin(), tmp.begin() + tmp.size() / 2, tmp.end());
+        return tmp[tmp.size() / 2];
+    }
+
+    template<class T, class Fn>
+    std::optional<double> median(const cv::Mat &in, Fn &&filter) {
+        assert(in.elemSize() == sizeof(T));
+        std::vector<T> tmp;
+        std::copy_if(in.begin<T>(), in.end<T>(), std::back_inserter(tmp), filter);
+
+        if (tmp.empty()) {
+            return {};
+        }
+
         std::nth_element(tmp.begin(), tmp.begin() + tmp.size() / 2, tmp.end());
         return tmp[tmp.size() / 2];
     }
