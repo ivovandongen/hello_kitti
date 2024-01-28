@@ -17,7 +17,8 @@
 using namespace ivd;
 
 void
-annotateImage(cv::Mat &image, std::vector<ivd::ml::Detection> &detections, std::vector<double> distances, bool mask) {
+annotateImage(cv::Mat &image, std::vector<ivd::ml::Detection> &detections, std::vector<double> distances,
+              const cv::Mat &depthMap, bool mask) {
 
     // Draw mask
     if (mask) {
@@ -43,6 +44,9 @@ annotateImage(cv::Mat &image, std::vector<ivd::ml::Detection> &detections, std::
         cv::Scalar color = cv::Scalar(0, 0, 255);
         cv::rectangle(image, box, color, 2);
 
+        // Lidar points
+        lidar::visualizeLidarDepthForBBox(image, depthMap, detection.bbox, detection.mask);
+
         // Detection box text
         const float fontScale = 0.5;
         const int thickness = 1;
@@ -65,6 +69,7 @@ struct Options {
     std::string index;
     uint32_t wait;
     double speed;
+    bool mask;
 };
 
 Options parseOpts(int argc, char **argv) {
@@ -78,6 +83,7 @@ Options parseOpts(int argc, char **argv) {
             ("w,wait", "Wait time (ms) between frames - 0 == wait indefinitely",
              cxxopts::value<uint32_t>()->default_value("1"))
             ("s,speed", "Speed multiplier", cxxopts::value<double>()->default_value("1.0"))
+            ("mask", "Segmentation mask", cxxopts::value<bool>()->default_value("false"))
             ("h,help", "Print usage");
     // clang-format on
 
@@ -94,6 +100,7 @@ Options parseOpts(int argc, char **argv) {
                 result["index"].as<std::string>(),
                 result["wait"].as<uint32_t>(),
                 result["speed"].as<double>(),
+                result["mask"].as<bool>(),
         };
 
         return opts;
@@ -163,18 +170,22 @@ private:
         veloUVZ_ = lidar::project(lidarDataFrameXYZW_, velo_cam2_, leftColor_.size());
         depthMap_ = lidar::depthMapFromProjectedPoints(veloUVZ_, leftColor_.size());
 
-        auto distances = [](std::vector<ivd::ml::Detection> &detections, cv::Mat &depthMap) {
+        auto distances = [](std::vector<ivd::ml::Detection> &detections, cv::Mat &depthMap, bool useMask) {
             std::vector<double> distances;
             distances.reserve(detections.size());
             std::transform(detections.begin(), detections.end(), std::back_inserter(distances),
-                           [&depthMap](const ivd::ml::Detection &detection) {
-                               return ivd::lidar::getDepth(depthMap, detection.bbox).value_or(-1);
+                           [&](const ivd::ml::Detection &detection) {
+                               if (useMask) {
+                                   return ivd::lidar::getDepth(depthMap, detection.bbox, detection.mask).value_or(-1);
+                               } else {
+                                   return ivd::lidar::getDepth(depthMap, detection.bbox).value_or(-1);
+                               }
                            });
             return distances;
-        }(detections_, depthMap_);
+        }(detections_, depthMap_, options_.mask);
 
         // Left color image
-        annotateImage(leftColor_, detections_, distances, false);
+        annotateImage(leftColor_, detections_, distances, depthMap_, options_.mask);
         cv::imshow(leftWindowColor, leftColor_);
         cv::resizeWindow(leftWindowColor, leftColor_.size().width * windowScale,
                          leftColor_.size().height * windowScale);
@@ -189,7 +200,7 @@ private:
         // Draw lidar points
         std::cout << "Lidar point count:" << veloUVZ_.cols << std::endl;
         cv::Mat lidarMap(leftColor_.size(), CV_8UC3, cv::Scalar(0));
-        lidar::visualizeLidarPoints(veloUVZ_, lidarMap);
+        lidar::visualizeLidarPoints(lidarMap, veloUVZ_);
         cv::imshow(lidarWindowColor, lidarMap);
         cv::moveWindow(lidarWindowColor, 0, cv::getWindowImageRect(leftWindowColor).height * windowScale);
 

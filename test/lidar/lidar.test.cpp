@@ -90,7 +90,7 @@ TEST(Lidar, Visualize) {
 
     cv::Mat points(cv::Size(shape[0], shape[1]), CV_64F, data.data());
 
-    lidar::visualizeLidarPoints(points, image);
+    lidar::visualizeLidarPoints(image, points);
     cv::imwrite(basePath / "Visualize_out.png", image);
 
     const float threshold = 0.005;
@@ -131,7 +131,7 @@ TEST(Lidar, E2E_Image) {
     common::copy(result, npy_data.data);
     npy::write_npy(basePath / "E2E_Image-lidar-points_out.npy", npy_data);
 
-    lidar::visualizeLidarPoints(result, image);
+    lidar::visualizeLidarPoints(image, result);
     cv::imwrite(basePath / "E2E_Image-image_out.png", image);
 
     const float threshold = 0.005;

@@ -13,4 +13,6 @@ namespace ivd::lidar {
     cv::Mat depthMapFromProjectedPoints(const cv::Mat &points, cv::Size size);
 
     std::optional<double> getDepth(const cv::Mat &lidarPoints, const cv::Rect &bbox);
+
+    std::optional<double> getDepth(const cv::Mat &depthMap, const cv::Rect &bbox, const cv::Mat &mask);
 }
