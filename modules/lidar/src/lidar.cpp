@@ -84,4 +84,12 @@ namespace ivd::lidar {
     std::optional<double> getDepth(const cv::Mat &depthMap, const cv::Rect &bbox) {
         return common::median<double>(depthMap(bbox), [](auto &val) { return val > 0; });
     }
+
+    std::optional<double> getDepth(const cv::Mat &depthMap, const cv::Rect &bbox, const cv::Mat &mask) {
+        // TODO: avoid copies
+        auto boxed = depthMap(bbox);
+        cv::Mat masked;
+        boxed.copyTo(masked, mask);
+        return common::median<double>(masked, [](auto &val) { return val > 0; });
+    }
 }
