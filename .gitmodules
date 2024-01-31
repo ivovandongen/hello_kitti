@@ -23,3 +23,11 @@
 	path = deps/colormap
 	url = git@github.com:jgreitemann/colormap.git
 	shallow = true
+[submodule "deps/capnproto"]
+	path = deps/capnproto
+	url = git@github.com:capnproto/capnproto.git
+	shallow = true
+[submodule "deps/cereal"]
+	path = deps/cereal
+	url = git@github.com:commaai/cereal.git
+	shallow = true
