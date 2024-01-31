@@ -6,15 +6,20 @@
 [submodule "deps/pixelmatch-cpp"]
 	path = deps/pixelmatch-cpp
 	url = git@github.com:mapbox/pixelmatch-cpp.git
+	shallow = true
 [submodule "deps/kitty_parser"]
 	path = deps/kitty_parser
 	url = git@github.com:ivovandongen/kitti_parser.git
+	shallow = true
 [submodule "deps/cxxopts"]
 	path = deps/cxxopts
 	url = git@github.com:jarro2783/cxxopts.git
+	shallow = true
 [submodule "deps/libnpy"]
 	path = deps/libnpy
 	url = git@github.com:llohse/libnpy.git
+	shallow = true
 [submodule "deps/colormap"]
 	path = deps/colormap
 	url = git@github.com:jgreitemann/colormap.git
+	shallow = true
