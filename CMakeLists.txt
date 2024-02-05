@@ -18,6 +18,7 @@ include(deps/cxxopts.cmake)
 include(deps/libnpy.cmake)
 include(deps/colormap.cmake)
 include(deps/capnproto.cmake)
+include(deps/cereal.cmake)
 
 add_subdirectory(data)
 add_subdirectory(models)
