@@ -47,4 +47,20 @@ namespace ivd::comma {
     std::string decompressBZ2(const std::string &input) {
         return ::decompressBZ2((std::byte *) input.data(), input.size());
     }
+
+    std::tuple<std::string, std::string, bool> parseRouteName(const std::string &input) {
+        auto delimiterIdx = input.find('|');
+        if (delimiterIdx == std::string::npos) {
+            return {};
+        }
+        return {input.substr(0, delimiterIdx), input.substr(delimiterIdx + 1), true};
+    }
+
+    std::tuple<std::string, size_t, bool> parseSegmentName(const std::string &input) {
+        auto delimiterIdx = input.rfind("--");
+        if (delimiterIdx == std::string::npos) {
+            return {};
+        }
+        return {input.substr(0, delimiterIdx), stoul(input.substr(delimiterIdx + 2)), true};
+    }
 }
