@@ -74,7 +74,7 @@ def download_route(route_name, data_dir):
         print(f"Processing {type_name}")
         for file in files:
             device_id, route_id, segment_id, file_name = parse_route_file_url(file)
-            segment_dir = os.path.join(data_dir, device_id, route_id, segment_id)
+            segment_dir = os.path.join(data_dir, device_id, f"{route_id}--{segment_id}")
             os.makedirs(segment_dir, exist_ok=True)
             output_file = os.path.join(segment_dir, file_name)
             print(f"Downloading file: {file} to {output_file}")
