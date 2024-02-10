@@ -25,6 +25,14 @@ def unix_time_millis(dt):
     return int((dt - epoch).total_seconds() * 1000.0)
 
 
+def parse_route_name(route_name):
+    result = route_name.split("|")
+    if len(result) != 2:
+        return None
+    else:
+        return result[0], result[1]
+
+
 def routes_segments(device, start, end):
     url = f"{BASE_URL}/devices/{device}/routes_segments?start={unix_time_millis(start)}"
     if end is not None:
@@ -65,6 +73,17 @@ def download_route(route_name, data_dir):
         print("Data dir does not exist")
         return
 
+    # Get route description
+    route_description = route(route_name)
+    if route_description is None:
+        print(f"Could not get description for route {route_name}")
+        return
+    device_id, route_id = parse_route_name(route_name)
+    device_dir = os.path.join(data_dir, device_id)
+    os.makedirs(device_dir, exist_ok=True)
+    with open(os.path.join(device_dir, f"{route_id}.json"), 'w') as f:
+        f.write(json.dumps(route_description))
+
     # Get route files
     files_descriptor = route_files(route_name)
     if files_descriptor is None:
@@ -83,9 +102,22 @@ def download_route(route_name, data_dir):
                 f.write(r.content)
 
 
-def route(route_name):
+def route_segments(route_name):
     response = requests.get(f"{BASE_URL}/route/{route_name}/segments", headers={"Authorization": f"JWT {access_token}"})
-    return response.json() if response.ok else {}
+    if response.ok:
+        return response.json()
+    else:
+        print(f"Could not get route segments:\n{response.text}")
+    return None
+
+
+def route(route_name):
+    response = requests.get(f"{BASE_URL}/route/{route_name}", headers={"Authorization": f"JWT {access_token}"})
+    if response.ok:
+        return response.json()
+    else:
+        print(f"Could not get route:\n{response.text}")
+    return None
 
 
 def me():
