@@ -1,0 +1,5 @@
+# Apps
+add_subdirectory(comma_player)
+add_subdirectory(kitti_detections)
+add_subdirectory(kitti_stereo_depth)
+add_subdirectory(kitti_lidar_depth)

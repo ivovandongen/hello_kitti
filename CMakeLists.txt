@@ -6,6 +6,9 @@ option(ENABLE_TESTS "Enable tests" ON)
 option(UPDATE_PYTHON_DEPS "Update python dependencies" ON)
 option(ML_BACKEND_VERBOSE_LOGS "Verbose ML Backend logging" OFF)
 
+# CMake Modules
+include(${PROJECT_SOURCE_DIR}/cmake/module.cmake)
+
 # Use a virtual env for our python dependencies
 include(${PROJECT_SOURCE_DIR}/cmake/python.cmake)
 setup_python()
@@ -23,6 +26,7 @@ include(deps/cereal.cmake)
 add_subdirectory(data)
 add_subdirectory(models)
 add_subdirectory(modules)
+add_subdirectory(apps)
 
 # Add tests
 if (ENABLE_TESTS)
