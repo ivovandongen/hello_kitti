@@ -3,9 +3,24 @@
 
 #include <cxxopts.hpp>
 #include <opencv2/opencv.hpp>
+#include <opendbc/can/common.h>
 
 #include <filesystem>
 #include <iostream>
+
+class RadarInterface {
+public:
+    RadarInterface()  {
+
+    }
+
+private:
+    const char * radarDBC = "toyota_tss2_adas";
+    const std::array<uint32_t, 16> RADAR_A_MSGS{384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396, 397, 398, 399};
+    const std::array<uint32_t, 16> RADAR_B_MSGS{400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415};
+    uint32_t triggerMsg = 415;
+    std::optional<CANParser> canParser;
+};
 
 struct Options {
     std::filesystem::path data;
@@ -69,23 +84,23 @@ int main(int argc, char **argv) {
     const constexpr float windowScale = 0.7;
     cv::namedWindow(roadWindowColor, cv::WINDOW_NORMAL);
 
-    comma::Player player{options.data, dongle, route, true};
+    comma::Player player{options.data, dongle, route, false};
     player.preload();
-    player.registerEventListener(cereal::Event::Which::RADAR_STATE, [](const comma::Event &event) {
-//        std::cout << event.mono_time << std::endl;
+    player.registerEventListener(cereal::Event::Which::CAN, [](const comma::Event &event) {
+        std::cout << event.mono_time << std::endl;
 //        std::cout << event.event.isRadarState() << std::endl;
 //        std::cout << event.event.getRadarState().getCarStateMonoTime() << std::endl;
     });
 
-    player.registerFrameListener(cereal::Event::Which::ROAD_ENCODE_IDX, [&](const comma::Event &event, cv::Mat frame) {
-        if (!frame.empty()) {
-            cv::imshow(roadWindowColor, frame);
-        } else {
-            std::cerr << "Empty frame for event:\n" << event.json() << std::endl;
-        }
-    });
+//    player.registerFrameListener(cereal::Event::Which::ROAD_ENCODE_IDX, [&](const comma::Event &event, cv::Mat frame) {
+//        if (!frame.empty()) {
+//            cv::imshow(roadWindowColor, frame);
+//        } else {
+//            std::cerr << "Empty frame for event:\n" << event.json() << std::endl;
+//        }
+//    });
 
     while (player.tick()) {
-        cv::waitKey(options.wait);
+//        cv::waitKey(options.wait);
     }
 }

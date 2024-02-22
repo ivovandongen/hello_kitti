@@ -1,0 +1,48 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+new file mode 100644
+index 0000000..5a80219
+--- /dev/null
++++ b/CMakeLists.txt
+@@ -0,0 +1,21 @@
++cmake_minimum_required(VERSION 3.15)
++project(opendbc)
++set(CMAKE_CXX_STANDARD 17)
++
++find_package(cereal)
++find_package(CapnProto CONFIG QUIET)
++
++set(OPENDBC_DIR "${PROJECT_SOURCE_DIR}")
++set(OPENDBC_SRC_DIR "${OPENDBC_DIR}/can")
++
++add_library(opendbc STATIC
++        ${OPENDBC_SRC_DIR}/common.cc
++        ${OPENDBC_SRC_DIR}/dbc.cc
++        ${OPENDBC_SRC_DIR}/packer.cc
++        ${OPENDBC_SRC_DIR}/parser.cc
++)
++
++target_link_libraries(opendbc PUBLIC CapnProto::capnp cereal)
++target_link_libraries(opendbc PRIVATE cereal)
++target_include_directories(opendbc SYSTEM PUBLIC ${OPENDBC_DIR}/include)
++target_compile_definitions(opendbc PRIVATE DBC_FILE_PATH="${OPENDBC_DIR}")
+\ No newline at end of file
+diff --git a/can/common.h b/include/opendbc/can/common.h
+similarity index 98%
+rename from can/common.h
+rename to include/opendbc/can/common.h
+index cfc63eb..21da6f3 100644
+--- a/can/common.h
++++ b/include/opendbc/can/common.h
+@@ -10,7 +10,7 @@
+ #include <capnp/serialize.h>
+ 
+ #ifndef DYNAMIC_CAPNP
+-#include "cereal/gen/cpp/log.capnp.h"
++#include "cereal/log.capnp.h"
+ #endif
+ 
+ #include "opendbc/can/common_dbc.h"
+diff --git a/can/common_dbc.h b/include/opendbc/can/common_dbc.h
+similarity index 100%
+rename from can/common_dbc.h
+rename to include/opendbc/can/common_dbc.h

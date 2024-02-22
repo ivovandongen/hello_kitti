@@ -31,3 +31,6 @@
 	path = deps/cereal
 	url = git@github.com:commaai/cereal.git
 	shallow = true
+[submodule "deps/opendbc"]
+	path = deps/opendbc
+	url = git@github.com:commaai/opendbc.git
